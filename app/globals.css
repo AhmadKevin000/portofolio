@@ -1,0 +1,482 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Design tokens — palette from design.md §2.
+
+   Tonal ramp, darkest to lightest. Each major section sits on a
+   different step so the page never reads as one flat black sheet.
+   ============================================================ */
+:root {
+  /* Surfaces */
+  --ink: #0b0c10; /* deep ink — hero, manifesto */
+  --surface-1: #11141a; /* primary surface — about, projects, beyond */
+  --surface-2: #171b22; /* secondary surface — arsenal */
+  --surface-3: #202630; /* elevated surface — contact */
+
+  /* Hairlines, tuned per surface */
+  --line: #232934;
+  --line-2: #333b48;
+  /* Ornament strokes — outlined numerals and monograms. Brighter than a
+     hairline so the mark reads as a deliberate focal element. */
+  --line-3: #4b5566;
+
+  /* Text */
+  --fg: #f3f4f6;
+  --fg-dim: #a5adb8;
+  /* #8b95a3 clears WCAG AA for small text on every surface in the ramp:
+     6.45:1 on --ink, 4.74:1 on --surface-2, 5.02:1 on --surface-3.
+     Do not darken this. */
+  --fg-faint: #8b95a3;
+
+  /* Accent: restrained cool silver-blue. Not neon. */
+  --accent: #c4d6ea;
+  --accent-ink: #0b0c10;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-line-3: var(--line-3);
+  --color-fg: var(--fg);
+  --color-fg-dim: var(--fg-dim);
+  --color-fg-faint: var(--fg-faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display-face);
+  --font-editorial: var(--font-editorial-face);
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+html {
+  scroll-behavior: auto;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--ink);
+  color: var(--fg);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  overflow-x: clip;
+}
+
+/* Anchor targets must clear the fixed header, or a jump lands with the
+   section heading hidden underneath it. */
+section[id],
+footer[id] {
+  scroll-margin-top: 5rem;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ============================================================
+   Section rhythm
+   ============================================================ */
+.shell {
+  width: 100%;
+  max-width: 96rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+@media (min-width: 768px) {
+  .shell {
+    padding-inline: 2.5rem;
+  }
+}
+@media (min-width: 1280px) {
+  .shell {
+    padding-inline: 4rem;
+  }
+}
+
+/* ============================================================
+   Hero layers
+
+   --px / --py are written by lib/pointer.ts as eased 0..1 viewport
+   coordinates. Every reactive layer below reads them, so one pointer
+   listener drives the spotlight, the orb and the wordmark tilt
+   without a single React re-render.
+   ============================================================ */
+#hero {
+  --px: 0.5;
+  --py: 0.5;
+}
+
+/* Broad silver-blue wash that drifts against the pointer. */
+.hero-orb {
+  position: absolute;
+  inset: -18%;
+  background: radial-gradient(
+    circle at 32% 40%,
+    rgba(196, 214, 234, 0.1) 0%,
+    rgba(196, 214, 234, 0.03) 38%,
+    transparent 62%
+  );
+  filter: blur(48px);
+  transform: translate3d(
+    calc((var(--px) - 0.5) * -44px),
+    calc((var(--py) - 0.5) * -30px),
+    0
+  );
+  will-change: transform;
+}
+
+/* Tight cursor spotlight. Screen blending keeps it a light source rather
+   than a grey film, so text contrast is never reduced. */
+.hero-spotlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    30rem 30rem at calc(var(--px) * 100%) calc(var(--py) * 100%),
+    rgba(196, 214, 234, 0.16) 0%,
+    rgba(196, 214, 234, 0.055) 34%,
+    transparent 66%
+  );
+  opacity: 0;
+  transition: opacity 0.65s ease;
+  mix-blend-mode: screen;
+}
+#hero[data-pointer="active"] .hero-spotlight {
+  opacity: 1;
+}
+
+/* Wordmark tilt. Lives on a wrapper so GSAP owns the entrance/exit
+   transforms on a different element and the two never fight. */
+.wordmark-tilt {
+  transform: perspective(1400px)
+    rotateX(calc((0.5 - var(--py)) * 5deg))
+    rotateY(calc((var(--px) - 0.5) * 7deg));
+  transform-style: preserve-3d;
+}
+
+/* ============================================================
+   Hero wordmark — CSS-rendered dimensional type.
+
+   This is a CSS extrusion (stacked text-shadow depth + a
+   gradient-clipped face), NOT Spline geometry. The published scene
+   contains no 3D text.
+   ============================================================ */
+.wordmark {
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+  transform-style: preserve-3d;
+  /* Pointer position, mapped onto the face for the specular layers. */
+  --spec-x: calc(var(--px, 0.5) * 100%);
+  --spec-y: calc(var(--py, 0.5) * 100%);
+}
+
+.wordmark__depth,
+.wordmark__face {
+  display: block;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 800;
+  line-height: 0.78;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+}
+
+.wordmark__depth {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  color: #1a1e26;
+  text-shadow:
+    1px 1px 0 #3c434f,
+    2px 2px 0 #39404b,
+    3px 3px 0 #363d48,
+    4px 4px 0 #333a44,
+    5px 5px 0 #303640,
+    6px 6px 0 #2c323b,
+    7px 7px 0 #292e37,
+    8px 8px 0 #252a32,
+    9px 9px 0 #22262d,
+    10px 10px 0 #1e2229,
+    11px 11px 0 #1b1e24,
+    12px 12px 0 #171a20,
+    13px 13px 0 #14161b,
+    14px 14px 0 #101216,
+    15px 15px 0 #0d0e12,
+    16px 16px 0 #0a0b0e,
+    17px 17px 0 rgba(196, 214, 234, 0.18),
+    0 20px 48px rgba(0, 0, 0, 0.8);
+}
+
+.wordmark__face {
+  position: relative;
+  background: linear-gradient(
+    179deg,
+    #ffffff 0%,
+    #f7f8fa 20%,
+    #e6e9ee 38%,
+    #d3d8e0 50%,
+    #e2e6ec 60%,
+    #f4f6f9 72%,
+    #ffffff 84%,
+    #eaedf2 93%,
+    #cfd5de 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Specular glint — a cool white highlight that follows the cursor across
+   the face.
+
+   Deliberately screen-only. An earlier version added a second multiply
+   layer behind the highlight to fake chrome shading; at any strength that
+   was actually visible it read as a grey blotch sitting on the
+   letterforms, so the shading now comes from the face gradient alone and
+   the cursor only ever adds light. */
+.wordmark__face::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    42% 52% at var(--spec-x) var(--spec-y),
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(226, 238, 252, 0.34) 40%,
+    rgba(196, 214, 234, 0.08) 62%,
+    transparent 78%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+/* "known as" — small, italic, deliberately overlapping the top-left
+   corner of the K. It clips the corner only; the letterforms stay readable.
+   The knockout is feathered halos rather than a panel: the hero sits on a
+   radial gradient, so any opaque chip reads as a rectangle. */
+.known-as {
+  position: absolute;
+  z-index: 3;
+  top: 0.02em;
+  left: 0.04em;
+  font-family: var(--font-editorial), Georgia, serif;
+  font-style: italic;
+  font-size: clamp(0.95rem, 2.1vw, 1.75rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--fg);
+  transform: rotate(-7deg);
+  transform-origin: left bottom;
+  padding: 0.34em 0.72em;
+  text-shadow:
+    0 0 5px var(--ink),
+    0 0 10px var(--ink),
+    0 0 16px var(--ink),
+    0 0 24px var(--ink);
+  border-left: 2px solid var(--accent);
+}
+
+@media (max-width: 640px) {
+  .wordmark__depth {
+    text-shadow:
+      1px 1px 0 #3c434f,
+      2px 2px 0 #373e49,
+      3px 3px 0 #323942,
+      4px 4px 0 #2d333c,
+      5px 5px 0 #282d35,
+      6px 6px 0 #23272e,
+      7px 7px 0 #1e2228,
+      8px 8px 0 #191c21,
+      9px 9px 0 #14171b,
+      10px 10px 0 rgba(196, 214, 234, 0.18),
+      0 12px 28px rgba(0, 0, 0, 0.7);
+  }
+}
+
+/* ============================================================
+   Project plate sheen — follows the pointer across the card.
+   ============================================================ */
+.card-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    22rem 22rem at calc(var(--mx, 50) * 1%) calc(var(--my, 50) * 1%),
+    rgba(196, 214, 234, 0.13) 0%,
+    rgba(196, 214, 234, 0.04) 40%,
+    transparent 64%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  mix-blend-mode: screen;
+}
+.group:hover .card-glow {
+  opacity: 1;
+}
+
+/* ============================================================
+   Comet Card glare — a cool highlight that tracks the pointer
+   across the portrait frame.
+
+   Screen-only, and confined to the image frame: the caption sits
+   outside the tilt wrapper, so no light ever lands on text.
+   ============================================================ */
+.comet-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  background: radial-gradient(
+    42% 42% at var(--gx, 50%) var(--gy, 50%),
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(196, 214, 234, 0.12) 44%,
+    transparent 74%
+  );
+  mix-blend-mode: screen;
+}
+[data-tilt="active"] .comet-glare {
+  opacity: 1;
+}
+
+/* ============================================================
+   Contact dock — proximity magnification.
+
+   `--near` is written by ContactDock.tsx as 0..1 based on cursor
+   distance. Scaling a 16px glyph would just look blurry, so the
+   scale stays modest and the transform is only applied where a
+   real cursor exists.
+   ============================================================ */
+@media (hover: hover) and (pointer: fine) {
+  .dock-icon {
+    transform: scale(calc(1 + var(--near, 0) * 0.28));
+    transition: transform 0.25s ease-out;
+    will-change: transform;
+  }
+}
+
+/* ============================================================
+   Reveal — initial states.
+
+   The hidden state is OPT-IN. `[data-reveal]` is visible by
+   default and only hides while `<html data-reveal-armed>` is set.
+
+   That attribute is written by the bootstrap script in
+   app/layout.tsx before first paint, and removed by a watchdog if
+   GSAP never reports in. So a bundle that fails to load, a blocked
+   chunk, a hydration error, or a slow connection can delay the
+   animation but can never leave the copy invisible — which is
+   exactly what a bare `[data-reveal] { opacity: 0 }` used to do.
+   ============================================================ */
+[data-reveal] {
+  opacity: 1;
+}
+
+html[data-reveal-armed] [data-reveal]:not(.is-in) {
+  opacity: 0;
+}
+html[data-reveal-armed] [data-reveal="up"]:not(.is-in) {
+  transform: translate3d(0, 30px, 0);
+}
+html[data-reveal-armed] [data-reveal="mask"]:not(.is-in) {
+  clip-path: inset(0% 0% 100% 0%);
+}
+html[data-reveal-armed] [data-reveal="line"]:not(.is-in) {
+  clip-path: inset(0% 100% 0% 0%);
+}
+html[data-reveal-armed] [data-reveal="scale"]:not(.is-in) {
+  transform: scale(0.94) translate3d(0, 22px, 0);
+}
+[data-reveal].is-in {
+  opacity: 1 !important;
+  clip-path: none !important;
+  transform: none !important;
+}
+
+/* ============================================================
+   Short viewports — the manifesto must still fit when pinned.
+   ============================================================ */
+@media (max-height: 660px) {
+  [data-word="innovate"],
+  [data-word="purpose"] {
+    font-size: clamp(1.9rem, 9vw, 4.5rem) !important;
+  }
+  [data-word="with"] {
+    font-size: clamp(1.2rem, 3.6vw, 2rem) !important;
+  }
+  .manifesto-sticky [data-kicker] {
+    margin-top: 1rem;
+  }
+}
+
+/* ============================================================
+   Reduced motion — a real alternative, not a slower version.
+
+   No pinning, no parallax, no pointer layers, no scrubbed
+   transforms. Everything is simply present and readable.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-reveal] {
+    opacity: 1 !important;
+    clip-path: none !important;
+    transform: none !important;
+  }
+
+  /* Nothing may stay hidden behind a disabled animation. */
+  html[data-reveal-armed] [data-reveal] {
+    opacity: 1 !important;
+    clip-path: none !important;
+    transform: none !important;
+  }
+
+  .wordmark-tilt,
+  .hero-orb {
+    transform: none !important;
+  }
+
+  /* The specular highlight is cursor-driven. Frozen at its default position
+     it reads as a smudge, so it is removed entirely. */
+  .wordmark__face::before {
+    display: none !important;
+  }
+
+  .hero-spotlight,
+  .card-glow,
+  .comet-glare {
+    display: none !important;
+  }
+
+  /* Manifesto collapses to a static, readable block — no scrub, no height trap. */
+  .manifesto-scroll {
+    height: auto !important;
+  }
+  .manifesto-sticky {
+    position: static !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding-block: 6rem;
+  }
+}
