@@ -1,6 +1,7 @@
 import { Reveal } from "@/components/ui/Reveal";
 import { Parallax } from "@/components/ui/Parallax";
-import { storyChapters } from "@/content/site";
+import { getContent, getStoryChapters } from "@/content/site";
+import type { Locale } from "@/lib/i18n";
 
 /**
  * Beyond the Code — Server Component.
@@ -9,18 +10,21 @@ import { storyChapters } from "@/content/site";
  * the copy, so this section reads differently from the row-stagger of the
  * arsenal and the card-stagger of the projects.
  */
-export default function Beyond() {
+export default function Beyond({ locale }: { locale: Locale }) {
+  const t = getContent(locale);
+  const chapters = getStoryChapters(locale);
+
   return (
     <section
       id="beyond"
       aria-labelledby="beyond-heading"
-      className="relative overflow-hidden bg-surface-1 py-24 md:py-32"
+      className="relative z-10 overflow-hidden py-24 md:py-32"
     >
       <div className="shell">
         <div className="max-w-3xl">
           <Reveal variant="fade">
             <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-accent">
-              Beyond the code
+              {t.beyond.eyebrow}
             </p>
           </Reveal>
           <Reveal variant="mask" delay={0.06}>
@@ -28,21 +32,20 @@ export default function Beyond() {
               id="beyond-heading"
               className="mt-4 font-display text-[clamp(2.5rem,7vw,5.5rem)] font-extrabold leading-[0.88] tracking-tight"
             >
-              The parts that
+              {t.beyond.headingLead}
               <br />
-              <span className="text-fg-faint">don&apos;t fit in a repo.</span>
+              <span className="text-fg-faint">{t.beyond.headingTail}</span>
             </h2>
           </Reveal>
           <Reveal variant="up" delay={0.14}>
             <p className="mt-6 font-editorial text-[clamp(1.1rem,2.2vw,1.5rem)] italic leading-snug text-fg-dim">
-              Three chapters that shaped how I work with people — none of them
-              written in a terminal.
+              {t.beyond.lede}
             </p>
           </Reveal>
         </div>
 
         <div className="mt-16 space-y-16 md:mt-24 md:space-y-24">
-          {storyChapters.map((chapter) => (
+          {chapters.map((chapter) => (
             <div key={chapter.id} className="grid gap-8 lg:grid-cols-12 lg:gap-12">
               <div className="lg:col-span-4">
                 <Parallax speed={-5}>
@@ -68,11 +71,16 @@ export default function Beyond() {
               </div>
 
               <div className="lg:col-span-7 lg:col-start-6">
+                {/* One rule opens the chapter; the rows inside carry no
+                    separators. The perspective grid behind this section is
+                    already a field of hairlines, and a rule per row made the
+                    two compete. Spacing and the title/body column split do
+                    the separating instead. */}
                 <ul className="border-t border-line">
                   {chapter.entries.map((entry, ei) => (
                     <li key={entry.title}>
                       <Reveal variant="line" delay={ei * 0.07}>
-                        <div className="group grid gap-2 border-b border-line py-6 transition-colors hover:border-line-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] sm:gap-8">
+                        <div className="group grid gap-2 py-7 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] sm:gap-8">
                           <h4 className="text-base font-semibold leading-snug text-fg transition-colors group-hover:text-accent">
                             {entry.title}
                           </h4>
@@ -88,13 +96,6 @@ export default function Beyond() {
             </div>
           ))}
         </div>
-
-        <Reveal variant="line" delay={0.08}>
-          <p className="mt-16 max-w-xl border-l border-accent/40 pl-5 font-mono text-[10px] uppercase leading-relaxed tracking-[0.18em] text-fg-faint">
-            These experiences are listed as facts, not as proof of a skill
-            level. What they show is context, not a score.
-          </p>
-        </Reveal>
       </div>
     </section>
   );

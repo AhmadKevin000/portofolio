@@ -221,18 +221,43 @@ footer[id] {
 
 .wordmark__face {
   position: relative;
-  background: linear-gradient(
-    179deg,
-    #ffffff 0%,
-    #f7f8fa 20%,
-    #e6e9ee 38%,
-    #d3d8e0 50%,
-    #e2e6ec 60%,
-    #f4f6f9 72%,
-    #ffffff 84%,
-    #eaedf2 93%,
-    #cfd5de 100%
-  );
+  /* `background-clip: text` paints only inside the background positioning
+     area, and `line-height: 0.78` makes that box shorter than the glyphs:
+     the dot of the `i` rises ~0.035em above it and the `p` descender drops
+     ~0.109em below. Both fell outside the paint area, so they rendered as
+     transparent gaps — the flat-cut dot and severed descender.
+
+     Padding grows the paint area to cover the full ink; the equal negative
+     margin puts the box back, so the wordmark's position, size, and the
+     surrounding layout are unchanged. */
+  padding: 0.05em 0 0.13em;
+  margin: -0.05em 0 -0.13em;
+  /* The approved ramp is pinned to the original line box (0.78em tall, sat
+     at the content box), so every glyph keeps exactly the gradient it had.
+     The second layer only shows through the new padding, continuing the ramp
+     with its own end colours — white above the cap height, `#cfd5de` below
+     the baseline. */
+  background-image:
+    linear-gradient(
+      179deg,
+      #ffffff 0%,
+      #f7f8fa 20%,
+      #e6e9ee 38%,
+      #d3d8e0 50%,
+      #e2e6ec 60%,
+      #f4f6f9 72%,
+      #ffffff 84%,
+      #eaedf2 93%,
+      #cfd5de 100%
+    ),
+    linear-gradient(179deg, #ffffff 0, #ffffff 0.05em, #cfd5de 0.83em, #cfd5de 100%);
+  background-size:
+    100% 0.78em,
+    100% 100%;
+  background-position:
+    0 0.05em,
+    0 0;
+  background-repeat: no-repeat, no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -250,6 +275,10 @@ footer[id] {
   content: attr(data-text);
   position: absolute;
   inset: 0;
+  /* Same padding as the face: `inset: 0` resolves against the face's padding
+     box, so this insets the glint's text back onto the glyphs it highlights
+     while letting its paint area cover the full ink. */
+  padding: 0.05em 0 0.13em;
   background: radial-gradient(
     42% 52% at var(--spec-x) var(--spec-y),
     rgba(255, 255, 255, 0.85) 0%,
@@ -354,19 +383,392 @@ footer[id] {
 }
 
 /* ============================================================
-   Contact dock — proximity magnification.
+   Polaroid frame
 
-   `--near` is written by ContactDock.tsx as 0..1 based on cursor
-   distance. Scaling a 16px glyph would just look blurry, so the
-   scale stays modest and the transform is only applied where a
-   real cursor exists.
+   One physical-print treatment, shared by the About portrait and
+   the project galleries: a charcoal board, a hairline silver-blue
+   edge, and a bottom band wider than the top and side margins.
+
+   --pol-pad and --pol-caption are declared on the glare layer too,
+   because it is a sibling of the frame rather than a descendant and
+   needs the same numbers to stay inside the image window.
    ============================================================ */
-@media (hover: hover) and (pointer: fine) {
-  .dock-icon {
-    transform: scale(calc(1 + var(--near, 0) * 0.28));
-    transition: transform 0.25s ease-out;
-    will-change: transform;
+.polaroid,
+.polaroid-glare {
+  --pol-pad: 12px;
+  --pol-caption: 42px;
+}
+
+@media (min-width: 768px) {
+  .polaroid,
+  .polaroid-glare {
+    --pol-pad: 14px;
+    --pol-caption: 48px;
   }
+}
+
+.polaroid {
+  position: relative;
+  padding: var(--pol-pad) var(--pol-pad) 0;
+  background: linear-gradient(178deg, #212733 0%, #1b1f27 58%, #171b22 100%);
+  border: 1px solid rgba(196, 214, 234, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 2px 6px rgba(0, 0, 0, 0.45),
+    0 22px 48px -22px rgba(0, 0, 0, 0.9);
+}
+
+/* The window takes the image's own ratio from an inline aspect-ratio, so a
+   2.14 landing page and a 0.45 phone capture are both framed without a crop. */
+.polaroid__window {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.55);
+}
+
+/* `min-height`, not a fixed height: a caption that ever wraps grows the band
+   instead of clipping. The glare inset below assumes one line. */
+.polaroid__caption {
+  display: flex;
+  align-items: center;
+  min-height: var(--pol-caption);
+  padding-inline: 2px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+/* Comet Card glare, confined to the image window. A screen-blended highlight
+   over the caption band would spend its contrast for no reason.
+
+   The numbers are the frame's own: the window starts after the border and the
+   top/side padding, and ends after the caption band (padding-bottom is 0). */
+.polaroid-glare {
+  inset: calc(var(--pol-pad) + 1px) calc(var(--pol-pad) + 1px)
+    calc(var(--pol-caption) + 1px) calc(var(--pol-pad) + 1px);
+}
+
+/* ============================================================
+   Stacked Polaroid gallery
+
+   Every card sits in the same grid cell, so the deck is exactly as
+   tall as its tallest card. Paging between screenshots therefore
+   never changes the height of the project card — the copy beside it
+   stays put even when the images have different ratios.
+
+   The slot transform is written inline from React state and eased by
+   CSS; the pointer tilt lives on a child element inside CometCard.
+   Two owners, two elements, no shared transform property.
+   ============================================================ */
+.gallery__stack {
+  display: grid;
+  grid-template-areas: "card";
+}
+
+.gallery__card {
+  grid-area: card;
+  width: 100%;
+  align-self: center;
+  justify-self: center;
+  /* Slot values arrive as custom properties from React. The deck is dialled
+     back below `lg`, where the screenshot spans the full content width and any
+     sideways offset would push the back cards into the page margin. */
+  --stack-shift: 1;
+  --stack-rot: 1;
+  transform: translate(
+      calc(var(--gx, 0%) * var(--stack-shift)),
+      calc(var(--gy, 0%) * var(--stack-shift))
+    )
+    rotate(calc(var(--gr, 0deg) * var(--stack-rot))) scale(var(--gs, 1));
+  opacity: var(--go, 1);
+  transition:
+    transform 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 480ms ease;
+}
+
+@media (max-width: 1023px) {
+  .gallery__card {
+    --stack-shift: 0.2;
+    --stack-rot: 0.35;
+  }
+}
+
+/* One compact group, centred under the deck. `space-between` used to spread
+   Previous and Next to the far edges of the image column, which read as three
+   unrelated elements. The buttons keep their own padding, so the gap here only
+   sets the distance between the two controls and the counter. */
+.gallery__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+/* Icon-only: the words now live in `aria-label`, so the box is square and the
+   arrow is centred in it. 44px is both the smallest comfortable tap target and
+   what the bordered control already was, so the shape still reads as a button
+   rather than a floating glyph. */
+.gallery__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--line-2);
+  color: var(--fg);
+  cursor: pointer;
+  transition:
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+
+.gallery__btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Preflight does not give <button> a pointer cursor, and a disabled pager
+   button is a real state here — not a styling accident. */
+.gallery__btn:disabled {
+  color: var(--fg-faint);
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Tabular figures stop the counter from shifting width between 01 and 10.
+   `nowrap` is the point of this rule: "01 / 03" is one token, so it must never
+   break across lines when the group runs out of room. */
+.gallery__count {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  color: var(--fg-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   Atlas band — one continuous perspective grid behind
+   Selected Projects, Technical Arsenal, and Beyond the Code.
+
+   Decorative only. The layer is inert (`pointer-events: none`) and
+   sits at z-0; the three sections keep their own stacking context at
+   z-10, so nothing in here can ever intercept a click or paint over
+   copy.
+
+   Deliberately NOT transformed/filtered at the band level: SiteNav is
+   `position: fixed`, and any transform or filter on an ancestor would
+   capture it into a new containing block and break it.
+   ============================================================ */
+.atlas-band {
+  --grid-cell: 80px;
+  --grid-tilt: 30deg;
+  --grid-scale: 1.6;
+  --grid-perspective: 1200px;
+  /* Line alphas are tuned against --fg-faint, not by eye alone: the grid plus
+     the light layers must leave #8b95a3 at or above 4.5:1 over --surface-2,
+     which is the darkest documented floor in the ramp. Measured worst case
+     after this pair of values is 4.65:1. */
+  --grid-line: rgba(196, 214, 234, 0.032);
+  --grid-line-major: rgba(196, 214, 234, 0.022);
+
+  position: relative;
+  isolation: isolate;
+  background-color: var(--surface-1);
+  /* The measured three-block ramp replaces this at runtime so the tonal
+     steps land exactly on the section boundaries at every breakpoint.
+     The fallback below is the desktop-aligned version, which keeps the
+     right structure when JS never runs. */
+  background-image: var(
+    --atlas-ramp,
+    linear-gradient(
+      to bottom,
+      var(--surface-1) 0%,
+      var(--surface-1) 33.8%,
+      var(--surface-2) 33.8%,
+      var(--surface-2) 67.3%,
+      var(--surface-1) 67.3%,
+      var(--surface-1) 100%
+    )
+  );
+}
+
+/* Narrow viewports see far fewer grid columns for the same absolute
+   cell size, so the cell shrinks and the plane is scaled back to keep
+   the density readable instead of showing three giant squares. */
+@media (max-width: 767px) {
+  .atlas-band {
+    --grid-cell: 40px;
+    --grid-scale: 1.15;
+  }
+}
+
+.atlas-grid-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Sticks for the whole band, so the perspective stays stable while
+   content scrolls over it. The absolute parent is what makes it stick
+   across the full band height without consuming layout space. */
+.atlas-grid-viewport {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.atlas-grid-fade {
+  position: absolute;
+  inset: 0;
+  /* Pointer coordinates published by lib/pointer.ts. Defaults keep the
+     spotlight centred if a pointer never arrives. */
+  --px: 0.5;
+  --py: 0.5;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 16%,
+    #000 84%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 16%,
+    #000 84%,
+    transparent 100%
+  );
+}
+
+.atlas-grid-persp {
+  position: absolute;
+  inset: 0;
+  perspective: var(--grid-perspective);
+  perspective-origin: 50% 50%;
+}
+
+/* Centred with margins rather than translate(-50%, -50%) so the only
+   transform on this element is the 3D rotation the pointer maths
+   inverts. `transform-origin` stays at the box centre, which is also the
+   perspective origin — the two must coincide or the projection drifts. */
+.atlas-grid-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1600px;
+  height: 1600px;
+  margin-left: -800px;
+  margin-top: -800px;
+  transform: rotateX(var(--grid-tilt)) scale(var(--grid-scale));
+  transform-origin: 50% 50%;
+  opacity: var(--grid-strength, 1);
+}
+
+.atlas-grid-lines {
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      var(--grid-line-major) 0 1px,
+      transparent 1px calc(var(--grid-cell) * 5)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--grid-line-major) 0 1px,
+      transparent 1px calc(var(--grid-cell) * 5)
+    ),
+    repeating-linear-gradient(
+      to right,
+      var(--grid-line) 0 1px,
+      transparent 1px var(--grid-cell)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--grid-line) 0 1px,
+      transparent 1px var(--grid-cell)
+    );
+}
+
+.atlas-trail {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Cursor spotlight. Screen-blended so it reads as a light source on the
+   band rather than a grey film over the copy — additive light can raise
+   the background under text but never lowers text contrast. Driven
+   entirely by --px/--py, so no React render happens per pointer move. */
+.atlas-spotlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.55s ease;
+  /* Peak is deliberately shallow: `--fg-faint` (#8b95a3) is documented at
+     4.74:1 on --surface-2, and the light layers must not spend that headroom.
+     At 0.026 the worst case — spotlight, a full-alpha lit cell and a grid line
+     all under the cursor — still keeps #8b95a3 above 4.5:1. */
+  background: radial-gradient(
+    30rem 30rem at calc(var(--px) * 100%) calc(var(--py) * 100%),
+    rgba(196, 214, 234, 0.026) 0%,
+    rgba(196, 214, 234, 0.009) 44%,
+    transparent 72%
+  );
+  mix-blend-mode: screen;
+}
+[data-pointer="active"] .atlas-spotlight {
+  opacity: var(--grid-strength, 1);
+}
+
+/* ============================================================
+   Technology atlas — specimen panel
+
+   The panel content is swapped with a key, so the entrance animation
+   re-runs on every category change. Under reduced motion the global
+   rule at the bottom of this file collapses the duration to ~0, which
+   makes the swap instant rather than merely faster.
+   ============================================================ */
+@keyframes atlas-specimen-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.atlas-specimen {
+  animation: atlas-specimen-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The panel is focusable so keyboard users can reach its content, but it is
+   not an action; the outline only appears on :focus-visible. */
+.atlas-specimen:focus-visible {
+  outline-offset: -3px;
+}
+
+/* Same reasoning for the tabs: the default 3px offset would draw the ring
+   outside the tab and over its neighbour. Pulling it in keeps it legible
+   against the shared border. */
+.atlas-tab:focus-visible {
+  outline-offset: -3px;
+  z-index: 1;
 }
 
 /* ============================================================
@@ -375,11 +777,11 @@ footer[id] {
    The hidden state is OPT-IN. `[data-reveal]` is visible by
    default and only hides while `<html data-reveal-armed>` is set.
 
-   That attribute is written by the bootstrap script in
-   app/layout.tsx before first paint, and removed by a watchdog if
-   GSAP never reports in. So a bundle that fails to load, a blocked
-   chunk, a hydration error, or a slow connection can delay the
-   animation but can never leave the copy invisible — which is
+   That attribute is rendered by the server (see the root layout),
+   so the hidden state is already in the first byte of HTML and no
+   script has to run before paint to arm it. A bundle that fails to
+   load, a blocked chunk, or a slow connection can therefore delay
+   the animation but can never leave the copy invisible — which is
    exactly what a bare `[data-reveal] { opacity: 0 }` used to do.
    ============================================================ */
 [data-reveal] {
@@ -400,6 +802,31 @@ html[data-reveal-armed] [data-reveal="line"]:not(.is-in) {
 }
 html[data-reveal-armed] [data-reveal="scale"]:not(.is-in) {
   transform: scale(0.94) translate3d(0, 22px, 0);
+}
+
+/* The rescue, in CSS instead of a `<script>`.
+
+   `ensureGsap()` sets `data-motion-ready` on `<html>` the moment GSAP is
+   registered. Until that happens this selector matches and the animation is
+   queued with a 2s delay; `forwards` (not `both`) means the `to` frame is NOT
+   applied during the delay, so the hidden state above still wins and nothing
+   flashes. As soon as GSAP reports in the selector stops matching, the
+   animation is cancelled, and the reveal plays normally.
+
+   If the bundle never arrives the animation lands, and every section becomes
+   readable instead of sitting at opacity 0 forever. This replaces the inline
+   watchdog script the layout used to render: same guarantee, no script tag for
+   React to hydrate, diff, or warn about. */
+html[data-reveal-armed]:not([data-motion-ready]) [data-reveal]:not(.is-in) {
+  animation: reveal-rescue 1ms linear 2s forwards;
+}
+
+@keyframes reveal-rescue {
+  to {
+    opacity: 1;
+    clip-path: none;
+    transform: none;
+  }
 }
 [data-reveal].is-in {
   opacity: 1 !important;
@@ -466,6 +893,13 @@ html[data-reveal-armed] [data-reveal="scale"]:not(.is-in) {
   .hero-spotlight,
   .card-glow,
   .comet-glare {
+    display: none !important;
+  }
+
+  /* The atlas grid is static structure, so it stays; the pointer-driven
+     light layers are motion and are removed. */
+  .atlas-spotlight,
+  .atlas-trail {
     display: none !important;
   }
 

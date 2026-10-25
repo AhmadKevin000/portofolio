@@ -1,66 +1,55 @@
 "use client";
 
-import Image from "next/image";
 import { useRef } from "react";
 import gsap from "gsap";
 import { useGsapScope, prefersReducedMotion, hasFinePointer } from "@/lib/gsap";
-import type { Project } from "@/content/site";
+import { ProjectGallery } from "@/components/sections/ProjectGallery";
+import type { Project, ProjectShot } from "@/content/site";
+import type { Locale } from "@/lib/i18n";
 
-export type ProjectWithAsset = Project & { imageSrc: string | null };
+export type ProjectWithShots = Project & { shots: ProjectShot[] };
 
 /**
- * Editorial plate for a project.
+ * Typographic stand-in for a project with no screenshots on disk.
  *
- * A real screenshot is rendered only when the file actually exists on disk, so
- * a missing asset never produces a broken image or a 404. Until then the plate
- * is a deliberate typographic composition — an outlined index numeral on a
- * tonal surface — not a fake screenshot and not a developer note.
+ * A real screenshot is rendered only when the file actually exists, so a
+ * missing asset never produces a broken image or a 404. Until then the plate is
+ * a deliberate composition — an outlined index numeral on a tonal surface —
+ * not a fake screenshot and not a developer note.
  */
-function ProjectPlate({ project }: { project: ProjectWithAsset }) {
+function ProjectPlate({ project }: { project: ProjectWithShots }) {
   return (
     <div className="relative aspect-[4/3] w-full overflow-hidden border border-line bg-surface-2 lg:aspect-[5/4]">
-      {project.imageSrc ? (
-        <Image
-          src={project.imageSrc}
-          alt={`${project.name} — project screenshot`}
-          fill
-          sizes="(max-width: 1024px) 100vw, 50vw"
-          className="object-cover"
-        />
-      ) : (
-        <>
-          {/* Hairline grid: structure, not decoration. */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 opacity-30"
-            style={{
-              backgroundImage:
-                "linear-gradient(to right, var(--line) 1px, transparent 1px), linear-gradient(to bottom, var(--line) 1px, transparent 1px)",
-              backgroundSize: "64px 64px",
-            }}
-          />
+      {/* Hairline grid: structure, not decoration. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, var(--line) 1px, transparent 1px), linear-gradient(to bottom, var(--line) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+        }}
+      />
 
-          {/* Outlined numeral as the single focal element. */}
-          <div aria-hidden="true" className="absolute inset-0 grid place-items-center">
-            <span
-              data-plate-numeral
-              className="font-display text-[clamp(5rem,17vw,13rem)] font-extrabold leading-none tracking-tight text-transparent"
-              style={{ WebkitTextStroke: "1.5px var(--line-3)" }}
-            >
-              {project.index}
-            </span>
-          </div>
+      {/* Outlined numeral as the single focal element. */}
+      <div aria-hidden="true" className="absolute inset-0 grid place-items-center">
+        <span
+          data-plate-numeral
+          className="font-display text-[clamp(5rem,17vw,13rem)] font-extrabold leading-none tracking-tight text-transparent"
+          style={{ WebkitTextStroke: "1.5px var(--line-3)" }}
+        >
+          {project.index}
+        </span>
+      </div>
 
-          <div className="relative flex h-full flex-col justify-between p-6">
-            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-fg-faint">
-              {project.kind}
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-fg-faint">
-              {project.name}
-            </span>
-          </div>
-        </>
-      )}
+      <div className="relative flex h-full flex-col justify-between p-6">
+        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-fg-faint">
+          {project.kind}
+        </span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-fg-faint">
+          {project.name}
+        </span>
+      </div>
 
       {/* Pointer-tracked sheen. Pure CSS on top of two custom properties. */}
       <div aria-hidden="true" className="card-glow" />
@@ -96,12 +85,22 @@ function useCardPointer(ref: React.RefObject<HTMLElement | null>) {
 function ProjectCard({
   project,
   flipped,
+  locale,
+  liveDemoLabel,
 }: {
-  project: ProjectWithAsset;
+  project: ProjectWithShots;
   flipped: boolean;
+  locale: Locale;
+  liveDemoLabel: string;
 }) {
   const cardRef = useRef<HTMLElement>(null);
   const pointer = useCardPointer(cardRef);
+
+  // The live demo sits in the same action row as any other project links, so
+  // there is one place to look for a way out of the card.
+  const links = project.liveUrl
+    ? [{ label: liveDemoLabel, href: project.liveUrl }, ...project.links]
+    : project.links;
 
   return (
     <article
@@ -109,14 +108,26 @@ function ProjectCard({
       data-card
       aria-labelledby={`project-${project.id}`}
       onPointerMove={pointer.onPointerMove}
-      className="group grid gap-8 lg:grid-cols-12 lg:gap-12"
+      className="group grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12"
     >
       <div
         data-card-part
         className={`lg:col-span-6 ${flipped ? "lg:order-2 lg:col-start-7" : ""}`}
       >
         <div className="transition-transform duration-500 ease-out group-hover:-translate-y-1.5">
-          <ProjectPlate project={project} />
+          {project.shots.length > 0 ? (
+            // The gallery owns its own outbound link, on the active screenshot
+            // only: wrapping the whole deck in an <a> would nest the pager
+            // buttons inside a link.
+            <ProjectGallery
+              shots={project.shots}
+              label={project.name}
+              liveUrl={project.liveUrl}
+              locale={locale}
+            />
+          ) : (
+            <ProjectPlate project={project} />
+          )}
         </div>
       </div>
 
@@ -176,14 +187,14 @@ function ProjectCard({
           </ul>
         )}
 
-        {project.links.length > 0 && (
+        {links.length > 0 && (
           <div data-card-part className="mt-7 flex flex-wrap gap-3">
-            {project.links.map((l) => (
+            {links.map((l) => (
               <a
                 key={l.href}
                 href={l.href}
                 target="_blank"
-                rel="noreferrer noopener"
+                rel="noopener noreferrer"
                 className="border border-line-2 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.24em] text-fg transition-colors hover:border-accent hover:text-accent"
               >
                 {l.label} ↗
@@ -196,7 +207,15 @@ function ProjectCard({
   );
 }
 
-export function ProjectsGrid({ items }: { items: ProjectWithAsset[] }) {
+export function ProjectsGrid({
+  items,
+  locale,
+  liveDemoLabel,
+}: {
+  items: ProjectWithShots[];
+  locale: Locale;
+  liveDemoLabel: string;
+}) {
   const scopeRef = useGsapScope<HTMLDivElement>(({ gsap, scope }) => {
     if (prefersReducedMotion()) return;
 
@@ -257,7 +276,13 @@ export function ProjectsGrid({ items }: { items: ProjectWithAsset[] }) {
   return (
     <div ref={scopeRef} className="mt-16 space-y-24 md:mt-24 md:space-y-32">
       {items.map((project, i) => (
-        <ProjectCard key={project.id} project={project} flipped={i % 2 === 1} />
+        <ProjectCard
+          key={project.id}
+          project={project}
+          flipped={i % 2 === 1}
+          locale={locale}
+          liveDemoLabel={liveDemoLabel}
+        />
       ))}
     </div>
   );

@@ -1,12 +1,14 @@
 "use client";
 
-import { profile } from "@/content/site";
+import { getContent, profile } from "@/content/site";
+import type { Locale } from "@/lib/i18n";
 import { useHasFinePointer, usePrefersReducedMotion } from "@/lib/hooks";
 import { useGsapScope, prefersReducedMotion } from "@/lib/gsap";
 import { useScopePointer } from "@/lib/pointer";
 import { Magnetic } from "@/components/ui/Magnetic";
 
-export default function Hero() {
+export default function Hero({ locale }: { locale: Locale }) {
+  const t = getContent(locale);
   const reduced = usePrefersReducedMotion();
   const finePointer = useHasFinePointer();
 
@@ -101,19 +103,19 @@ export default function Hero() {
               data-hero-eyebrow
               className="font-mono text-[10px] uppercase tracking-[0.4em] text-accent"
             >
-              Creative Developer — Portfolio
+              {t.hero.eyebrow}
             </p>
 
             <div data-hero-wordmark className="mt-5 md:mt-7">
               <div className="wordmark-tilt">
                 <h1
                   id="hero-name"
-                  aria-label={`${profile.fullName}, known as ${profile.nickname}`}
+                  aria-label={t.hero.nameAria(profile.fullName, profile.nickname)}
                   className="wordmark"
                   style={{ fontSize: "clamp(4.5rem, 21vw, 18rem)" }}
                 >
                   <span className="known-as" data-hero-known aria-hidden="true">
-                    known as
+                    {t.hero.knownAs}
                   </span>
                   <span className="wordmark__depth" data-hero-depth aria-hidden="true">
                     {profile.nickname}
@@ -150,7 +152,7 @@ export default function Hero() {
               data-hero-intro
               className="max-w-sm text-[15px] leading-relaxed text-fg-dim"
             >
-              {profile.heroIntro}
+              {t.hero.intro}
             </p>
 
             <dl
@@ -158,11 +160,11 @@ export default function Hero() {
               className="mt-7 space-y-2 border-l border-line pl-4 font-mono text-[10px] uppercase tracking-[0.22em]"
             >
               <div className="flex gap-3">
-                <dt className="w-16 text-fg-faint">Role</dt>
-                <dd className="text-fg">{profile.role}</dd>
+                <dt className="w-16 text-fg-faint">{t.hero.roleLabel}</dt>
+                <dd className="text-fg">{t.hero.role}</dd>
               </div>
               <div className="flex gap-3">
-                <dt className="w-16 text-fg-faint">Base</dt>
+                <dt className="w-16 text-fg-faint">{t.hero.baseLabel}</dt>
                 <dd className="text-fg">{profile.location}</dd>
               </div>
             </dl>
@@ -173,7 +175,7 @@ export default function Hero() {
                   href="#work"
                   className="group inline-flex items-center gap-3 border border-line-2 px-5 py-3 font-mono text-[10px] uppercase tracking-[0.28em] text-fg transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
                 >
-                  Explore my work
+                  {t.hero.cta}
                   <span
                     aria-hidden="true"
                     className="transition-transform group-hover:translate-x-1"

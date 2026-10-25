@@ -1,5 +1,17 @@
 /**
- * Single source of truth for every piece of copy on the site.
+ * Single source of truth for the site.
+ *
+ * Split in two:
+ *
+ *   - **Structure** lives here: ids, ordering, asset paths, intrinsic image
+ *     sizes, external hrefs, technology names, statuses. None of it changes
+ *     with the language, and duplicating it per locale would let the two
+ *     copies drift.
+ *   - **Copy** lives in `content/en.ts` and `content/id.ts`, typed by the
+ *     `Dictionary` below so a missing translation is a compile error.
+ *
+ * `getContent(locale)` merges the two. Components never branch on the locale;
+ * they read a finished object.
  *
  * Content rules (AGENTS.md §5):
  * - Nothing here is invented.
@@ -8,11 +20,21 @@
  * - No public contact detail appears here unless the owner approved it.
  */
 
+import type { Locale } from "@/lib/i18n";
+import { en } from "@/content/en";
+import { id } from "@/content/id";
+
+/* ------------------------------------------------------------------ */
+/* Identity                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Locale-independent identity. Proper nouns are never translated, so the
+ * name, the nickname and the profile URLs exist exactly once.
+ */
 export const profile = {
   nickname: "Kepin",
   fullName: "Ahmad Kevin",
-  /** Change this one string to re-scope the hero + about copy. */
-  role: "IT Student & Developer",
   location: "Indonesia",
   /**
    * Only verified channels. GitHub is confirmed by `git remote -v`; Instagram
@@ -25,13 +47,6 @@ export const profile = {
     linkedin:
       "https://id.linkedin.com/in/ahmad-kevin-malik-zakaria-78069b364",
   },
-  heroIntro:
-    "Building interfaces, learning in public, and shipping projects that are still in progress — honestly.",
-  aboutIntro: [
-    "I'm a student who got into software because I wanted to make things people could actually use, not because I wanted a title.",
-    "Most of what I know comes from building: a tutoring platform, a mobile app that is still fighting its machine-learning problems, and this site.",
-    "Outside the editor I teach, speak in front of rooms, and drive for ShopeeFood. Different contexts, same skill — explaining something clearly and then following through.",
-  ],
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -41,16 +56,34 @@ export const profile = {
 /**
  * Public URL of the owner's CV PDF.
  *
- * No PDF exists in the repo yet, so nothing links to this. Drop the file at
- * `public/cv/ahmad-kevin-cv.pdf` and the CV item in the contact dock appears
- * on the next build — the existence check is a build-time `existsSync`, not a
- * placeholder. Do not point this at a generated or substituted document.
+ * The file lives at `public/cv/ahmad-kevin-cv.pdf`. Drop it in and the CV link
+ * in the contact section appears on the next build — the existence check is a
+ * build-time `existsSync`, not a placeholder. Do not point this at a generated
+ * or substituted document.
  */
 export const CV_PATH = "/cv/ahmad-kevin-cv.pdf";
 
 /* ------------------------------------------------------------------ */
 /* Projects                                                            */
 /* ------------------------------------------------------------------ */
+
+/**
+ * One screenshot in a project's Polaroid gallery.
+ *
+ * `caption` is the short line printed on the Polaroid's bottom band. `alt` is
+ * the description a screen reader gets — deliberately separate, because the
+ * caption is a label, not a substitute for describing what is in the frame.
+ */
+export type ProjectShot = {
+  /** Path under `public/`. Only rendered when the file exists on disk. */
+  src: string;
+  /** Intrinsic pixel size, used to keep the frame at the screenshot's ratio. */
+  width: number;
+  height: number;
+  alt: string;
+  /** 1–3 words. Must name what the screenshot actually shows. */
+  caption: string;
+};
 
 export type Project = {
   id: string;
@@ -61,60 +94,73 @@ export type Project = {
   summary: string;
   /** Case-study blocks. Only factual, owner-supported statements. */
   sections: { label: string; body: string }[];
-  /** Empty until a stack is confirmed. Never guessed. */
+  /** Only technologies confirmed in the project's own manifest. */
   stack: string[];
   /** Empty until a real, public URL exists. */
   links: { label: string; href: string }[];
+  /**
+   * Screenshots, in reading order. Empty or absent until real captures are
+   * added to `public/` — never a mockup. One shot renders as a single Polaroid
+   * with no navigation; two or more render as a stack.
+   */
+  gallery?: ProjectShot[];
+  /** Set only for projects that are actually deployed and reachable. */
+  liveUrl?: string;
 };
 
-export const projects: Project[] = [
+/**
+ * Screenshots and links, in reading order. Shared by both locales: the files
+ * are the same files, and a typo in a second copy would only surface as a
+ * broken image.
+ */
+const projectBases = [
   {
     id: "kaifa",
     index: "01",
     name: "Bimbel KAIFA",
-    kind: "Web platform",
-    status: "In development",
-    summary:
-      "A web project for Bimbel KAIFA, a tutoring centre. Currently being built — it has not been released.",
-    sections: [
+    gallery: [
+      { src: "/images/kaifa/kaifa-home.png", width: 2940, height: 1376 },
+      { src: "/images/kaifa/kaifa-admin.png", width: 2940, height: 1550 },
       {
-        label: "Context",
-        body: "Bimbel KAIFA is a tutoring centre. This is a web project built for it.",
-      },
-      {
-        label: "Current stage",
-        body: "Still under construction. There is no public release yet.",
+        src: "/images/kaifa/kaifa-admin-kas.png",
+        width: 2940,
+        height: 1538,
       },
     ],
-    stack: [],
-    links: [],
+    stack: ["Laravel", "Filament", "MySQL"],
+    liveUrl: "https://bimbelkaifa.alwaysdata.net/",
   },
   {
     id: "roastmate",
     index: "02",
     name: "RoastMate",
-    kind: "Mobile application",
-    status: "In development",
-    summary:
-      "A mobile application in active development. The machine-learning component is the open problem right now.",
-    sections: [
+    gallery: [
       {
-        label: "Current stage",
-        body: "In development. Some implementation work exists; the product is not finished.",
+        src: "/images/roastmate/roastmate-camera.png",
+        width: 1080,
+        height: 2400,
       },
       {
-        label: "Open problem",
-        body: "The machine-learning component is unfinished. No model is claimed as working here.",
-      },
-      {
-        label: "Intended direction",
-        body: "Computer vision is the intended approach. It has not been validated yet.",
+        src: "/images/roastmate/roastmate-home.png",
+        width: 1080,
+        height: 2400,
       },
     ],
-    stack: [],
-    links: [],
+    stack: ["Flutter", "Dart", "Riverpod"],
+    liveUrl: undefined,
   },
-];
+] as const;
+
+export type ProjectId = (typeof projectBases)[number]["id"];
+
+/** The screenshots belonging to one project. */
+type ShotSrcFor<P extends ProjectId> = Extract<
+  (typeof projectBases)[number],
+  { id: P }
+>["gallery"][number]["src"];
+
+/** Every screenshot path on the site, across both projects. */
+export type ShotSrc = (typeof projectBases)[number]["gallery"][number]["src"];
 
 /* ------------------------------------------------------------------ */
 /* Technical arsenal                                                   */
@@ -160,26 +206,95 @@ export type TechCategory = {
 };
 
 /**
+ * Names and statuses only. The wording lives in the dictionary, keyed by
+ * `id` and by technology name, so neither locale can silently reorder or drop
+ * an entry.
+ */
+const techBases = [
+  {
+    id: "web",
+    items: [
+      { name: "Next.js", status: "used" },
+      { name: "React", status: "used" },
+      { name: "TypeScript", status: "used" },
+      { name: "Tailwind CSS", status: "used" },
+      { name: "GSAP", status: "used" },
+      { name: "ScrollTrigger", status: "used" },
+    ],
+  },
+  {
+    id: "mobile",
+    items: [
+      { name: "Flutter", status: "used" },
+      { name: "Dart", status: "used" },
+      { name: "Riverpod", status: "used" },
+      { name: "camera", status: "used" },
+      // Schema and seeding are real; the history screen still reads mock data,
+      // so the write path is genuinely unfinished. "In progress" is the honest
+      // label, not a hedge.
+      { name: "sqflite", status: "in-progress" },
+    ],
+  },
+  {
+    id: "ml",
+    items: [
+      { name: "Python", status: "used" },
+      { name: "YOLOv8n-cls", status: "experiment" },
+      { name: "Image classification", status: "experiment" },
+      { name: "Model evaluation", status: "used" },
+      { name: "Dataset curation", status: "used" },
+      // Exported and verified as a file, but `tflite_flutter` is not a
+      // dependency — so this is "experiment", never "used in the app".
+      { name: "TensorFlow Lite", status: "experiment" },
+      { name: "Object detection", status: "planned" },
+      { name: "OpenCV", status: "planned" },
+    ],
+  },
+  {
+    id: "backend",
+    items: [
+      { name: "Laravel", status: "used" },
+      { name: "PHP", status: "used" },
+      { name: "Filament", status: "used" },
+      { name: "MySQL", status: "used" },
+      { name: "PostgreSQL", status: "used" },
+      { name: "Prisma", status: "used" },
+    ],
+  },
+] as const;
+
+export type TechCategoryId = (typeof techBases)[number]["id"];
+export type TechItemName = (typeof techBases)[number]["items"][number]["name"];
+
+/**
+ * Only the backend category spans two projects, so only its rows name one.
+ * Keyed by technology name so a rename cannot leave a stale tag behind.
+ */
+const techProjects: Partial<Record<TechItemName, string>> = {
+  Laravel: "Bimbel KAIFA",
+  PHP: "Bimbel KAIFA",
+  Filament: "Bimbel KAIFA",
+  MySQL: "Bimbel KAIFA",
+  PostgreSQL: "PT AFT",
+  Prisma: "PT AFT",
+};
+
+/**
  * How each status reads on screen. The dot is never the only signal — the
  * label is always rendered next to it, so the distinction survives greyscale
  * and colour blindness.
  */
 export const techStatusMeta: Record<
   TechStatus,
-  { label: string; dot: string; text: string }
+  { dot: string; text: string }
 > = {
-  used: { label: "Used", dot: "bg-accent", text: "text-accent" },
+  used: { dot: "bg-accent", text: "text-accent" },
   "in-progress": {
-    label: "In progress",
     dot: "bg-accent/25 ring-1 ring-accent",
     text: "text-fg",
   },
-  experiment: { label: "Experiment", dot: "bg-fg-dim", text: "text-fg-dim" },
-  planned: {
-    label: "Planned",
-    dot: "ring-1 ring-line-3",
-    text: "text-fg-faint",
-  },
+  experiment: { dot: "bg-fg-dim", text: "text-fg-dim" },
+  planned: { dot: "ring-1 ring-line-3", text: "text-fg-faint" },
 };
 
 export const techStatusOrder: TechStatus[] = [
@@ -187,144 +302,6 @@ export const techStatusOrder: TechStatus[] = [
   "in-progress",
   "experiment",
   "planned",
-];
-
-export const techCategories: TechCategory[] = [
-  {
-    id: "web",
-    title: "Web Development",
-    note: "Interfaces, layout systems, and scroll choreography.",
-    items: [
-      { name: "Next.js", context: "App Router, this site", status: "used" },
-      { name: "React", context: "Component architecture", status: "used" },
-      { name: "TypeScript", context: "Strict mode, typed props", status: "used" },
-      { name: "Tailwind CSS", context: "Design tokens, layout", status: "used" },
-      { name: "GSAP", context: "Scroll choreography", status: "used" },
-      { name: "ScrollTrigger", context: "Scrubbed timelines", status: "used" },
-    ],
-  },
-  {
-    id: "mobile",
-    title: "Mobile Development",
-    note: "RoastMate — a Flutter app, still in development.",
-    items: [
-      { name: "Flutter", context: "App shell, screens, theme", status: "used" },
-      { name: "Dart", context: "Application language", status: "used" },
-      {
-        name: "Riverpod",
-        context: "State and dependency injection",
-        status: "used",
-      },
-      {
-        name: "camera",
-        context: "Live preview, capture to file",
-        status: "used",
-      },
-      {
-        name: "sqflite",
-        // Schema and seeding are real; the history screen still reads mock
-        // data, so the write path is genuinely unfinished. "In progress"
-        // is the honest label, not a hedge.
-        context: "Schema and seed done; history still on mock data",
-        status: "in-progress",
-      },
-    ],
-  },
-  {
-    id: "ml",
-    title: "Machine Learning & Computer Vision",
-    // No "validated" language anywhere in this group. The external check in
-    // `EXT-ROAST-002-DS006` scored 33.92%, so generalisation is unproven and
-    // the note says so.
-    note: "RoastMate research. Trained and evaluated, not shipped; generalisation to unseen photos is unproven.",
-    items: [
-      {
-        name: "Python",
-        context: "Training and evaluation scripts",
-        status: "used",
-      },
-      {
-        name: "YOLOv8n-cls",
-        context: "Roast classifier, four classes",
-        status: "experiment",
-      },
-      {
-        name: "Image classification",
-        context: "Fine-tuning a pretrained backbone",
-        status: "experiment",
-      },
-      {
-        name: "Model evaluation",
-        context: "Macro-F1, confusion matrix, external set",
-        status: "used",
-      },
-      {
-        name: "Dataset curation",
-        context: "Duplicate and near-duplicate removal",
-        status: "used",
-      },
-      {
-        name: "TensorFlow Lite",
-        // Exported and verified as a file, but `tflite_flutter` is not a
-        // dependency — so this is "experiment", never "used in the app".
-        context: "INT8 file exported, not wired into the app",
-        status: "experiment",
-      },
-      {
-        name: "Object detection",
-        context: "Not implemented — bean detector unbuilt",
-        status: "planned",
-      },
-      {
-        name: "OpenCV",
-        context: "Not implemented — shape analysis still planned",
-        status: "planned",
-      },
-    ],
-  },
-  {
-    id: "backend",
-    title: "Data & Backend",
-    note: "Server-side work across two projects.",
-    items: [
-      {
-        name: "Laravel",
-        context: "Application framework",
-        project: "Bimbel KAIFA",
-        status: "used",
-      },
-      {
-        name: "PHP",
-        context: "Server language",
-        project: "Bimbel KAIFA",
-        status: "used",
-      },
-      {
-        name: "Filament",
-        context: "Admin and teacher panels",
-        project: "Bimbel KAIFA",
-        status: "used",
-      },
-      {
-        name: "MySQL",
-        context: "Application data",
-        project: "Bimbel KAIFA",
-        status: "used",
-      },
-      {
-        name: "PostgreSQL",
-        context: "Content and admin data",
-        project: "PT AFT",
-        status: "used",
-      },
-      {
-        name: "Prisma",
-        context: "Schema, migrations, typed client",
-        project: "PT AFT",
-        status: "used",
-      },
-    ],
-  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -339,71 +316,239 @@ export type StoryChapter = {
   entries: { title: string; body: string }[];
 };
 
-export const storyChapters: StoryChapter[] = [
-  {
-    id: "communication",
-    index: "01",
-    title: "Communication & Education",
-    lede: "Most of what I do outside code is explaining things to people who did not ask for a lecture.",
-    entries: [
-      {
-        title: "Pesantren & public speaking",
-        body: "Studied at a pesantren, where speaking in front of a room was part of the routine, not an event.",
-      },
-      {
-        title: "Paid sermons at several mosques",
-        body: "Delivered ceramah and khotbah for a fee at a number of mosques.",
-      },
-      {
-        title: "Master of ceremonies",
-        body: "Have run events as MC — holding the room, keeping the order, keeping time.",
-      },
-      {
-        title: "Teaching primary school children",
-        body: "Taught SD students at a tutoring centre while I was in SMA.",
-      },
-      {
-        title: "Polinema Mengajar",
-        body: "Worked in external relations for Polinema Mengajar. Now demisioner, but sometimes still teaches.",
-      },
-    ],
-  },
-  {
-    id: "community",
-    index: "02",
-    title: "Community & Collaboration",
-    lede: "Showing up for people when the work is unglamorous.",
-    entries: [
-      {
-        title: "Orientation committee, 2025",
-        body: "Served on the security and health committee for the 2025 IT student orientation.",
-      },
-    ],
-  },
-  {
-    id: "realworld",
-    index: "03",
-    title: "Real-World Experience",
-    lede: "Work that has nothing to do with a laptop, and taught me the most about people.",
-    entries: [
-      {
-        title: "ShopeeFood driver",
-        body: "Roughly eight months and still active. Time pressure, strangers, and no room for a bad day.",
-      },
-    ],
-  },
-];
+const storyBases = [
+  { id: "communication", index: "01" },
+  { id: "leadership", index: "02" },
+  { id: "technology", index: "03" },
+] as const;
+
+export type StoryChapterId = (typeof storyBases)[number]["id"];
 
 /* ------------------------------------------------------------------ */
 /* Navigation                                                          */
 /* ------------------------------------------------------------------ */
 
-export const navItems = [
-  { href: "#about", label: "About" },
-  { href: "#work", label: "Work" },
-  { href: "#arsenal", label: "Toolkit" },
-  { href: "#beyond", label: "Story" },
-  { href: "#contact", label: "Contact" },
-] as const;
+export type NavId = "about" | "work" | "arsenal" | "beyond" | "contact";
 
-export const manifesto = ["INNOVATE", "WITH", "PURPOSE"] as const;
+/**
+ * Section anchors are identical in both locales — the sections are the same
+ * sections, so a hash survives a language switch.
+ */
+export const navItems: { id: NavId; href: string }[] = [
+  { id: "about", href: "#about" },
+  { id: "work", href: "#work" },
+  { id: "arsenal", href: "#arsenal" },
+  { id: "beyond", href: "#beyond" },
+  { id: "contact", href: "#contact" },
+];
+
+/* ------------------------------------------------------------------ */
+/* Dictionary shape                                                    */
+/* ------------------------------------------------------------------ */
+
+export type ProjectCopy<P extends ProjectId = ProjectId> = {
+  kind: string;
+  status: string;
+  summary: string;
+  sections: { label: string; body: string }[];
+  /** Keyed by screenshot path, so every frame in *this* project is captioned. */
+  shots: Record<ShotSrcFor<P>, { caption: string; alt: string }>;
+};
+
+export type Dictionary = {
+  meta: {
+    title: string;
+    description: string;
+    ogDescription: string;
+  };
+  ui: {
+    opensInNewTab: string;
+  };
+  nav: {
+    ariaLabel: string;
+    skipToProjects: string;
+    languageLabel: string;
+    labels: Record<NavId, string>;
+  };
+  hero: {
+    eyebrow: string;
+    knownAs: string;
+    intro: string;
+    roleLabel: string;
+    baseLabel: string;
+    role: string;
+    cta: string;
+    /** The h1 has no visible text of its own, so it needs a spoken name. */
+    nameAria: (fullName: string, nickname: string) => string;
+  };
+  about: {
+    eyebrow: string;
+    heading: string;
+    paragraphs: string[];
+    seeWork: string;
+    getInTouch: string;
+    /** "portrait" / "potret" — the full name is prepended by the caller. */
+    portraitLabel: string;
+  };
+  manifesto: {
+    words: readonly [string, string, string];
+    kicker: string;
+  };
+  projects: {
+    eyebrow: string;
+    headingLead: string;
+    headingTail: string;
+    note: string;
+    liveDemo: string;
+    /** Mapped per project so each one only has to caption its own shots. */
+    items: { [P in ProjectId]: ProjectCopy<P> };
+  };
+  gallery: {
+    navLabel: string;
+    /**
+     * The controls are icon-only, so these two are the *only* thing that names
+     * them. They describe images because that is what the pager moves between:
+     * every shot in the deck belongs to one project.
+     */
+    previousAria: string;
+    nextAria: string;
+    /** Names the group: "Bimbel KAIFA screenshots". */
+    groupAria: (projectName: string) => string;
+    /** Spoken counter, since the visible one is just "01 / 03". */
+    counter: (current: number, total: number, caption: string) => string;
+  };
+  arsenal: {
+    eyebrow: string;
+    heading: string;
+    description: string;
+    statusKeyLabel: string;
+    statusLabels: Record<TechStatus, string>;
+    toolsLabel: string;
+    toolsNote: string;
+    atlas: {
+      eyebrow: string;
+      hint: string;
+      entriesLabel: string;
+      domainsLabel: string;
+      categoriesAria: string;
+      /** Joins a range: "{first}–{last} of {total}". */
+      rangeOf: string;
+      categories: Record<TechCategoryId, { title: string; note: string }>;
+      contexts: Record<TechItemName, string>;
+    };
+  };
+  beyond: {
+    eyebrow: string;
+    headingLead: string;
+    headingTail: string;
+    lede: string;
+    chapters: Record<
+      StoryChapterId,
+      { title: string; lede: string; entries: { title: string; body: string }[] }
+    >;
+  };
+  contact: {
+    eyebrow: string;
+    headingLead: string;
+    headingTail: string;
+    body: string;
+    github: string;
+    instagram: string;
+    linkedin: string;
+    downloadCv: string;
+    backToTop: string;
+  };
+};
+
+/* ------------------------------------------------------------------ */
+/* Registry                                                            */
+/* ------------------------------------------------------------------ */
+
+const dictionaries: Record<Locale, Dictionary> = { en, id };
+
+/** All copy for one locale. */
+export function getContent(locale: Locale): Dictionary {
+  return dictionaries[locale];
+}
+
+/** Projects with the active locale's copy merged onto the shared assets. */
+export function getProjects(locale: Locale): Project[] {
+  const copy = getContent(locale).projects.items;
+
+  return projectBases.map((base) => {
+    const text = copy[base.id];
+    const shots = base.gallery as readonly {
+      src: ShotSrc;
+      width: number;
+      height: number;
+    }[];
+    // The loop already pairs each project with its own copy, so widening the
+    // key set here is safe — and it is the only place the two are joined.
+    const shotsCopy = text.shots as Record<
+      ShotSrc,
+      { caption: string; alt: string }
+    >;
+
+    return {
+      id: base.id,
+      index: base.index,
+      name: base.name,
+      kind: text.kind,
+      status: text.status,
+      summary: text.summary,
+      sections: text.sections.map((section) => ({ ...section })),
+      stack: [...base.stack],
+      links: [],
+      liveUrl: base.liveUrl,
+      gallery: shots.map((shot) => ({
+        src: shot.src,
+        width: shot.width,
+        height: shot.height,
+        caption: shotsCopy[shot.src].caption,
+        alt: shotsCopy[shot.src].alt,
+      })),
+    };
+  });
+}
+
+/** Technology atlas with the active locale's copy merged onto the names. */
+export function getTechCategories(locale: Locale): TechCategory[] {
+  const copy = getContent(locale).arsenal.atlas;
+
+  return techBases.map((base) => {
+    const items = base.items as readonly {
+      name: TechItemName;
+      status: TechStatus;
+    }[];
+
+    return {
+      id: base.id,
+      title: copy.categories[base.id].title,
+      note: copy.categories[base.id].note,
+      items: items.map((item) => ({
+        name: item.name,
+        context: copy.contexts[item.name],
+        project: techProjects[item.name],
+        status: item.status,
+      })),
+    };
+  });
+}
+
+/** Beyond the Code chapters, in the fixed order. */
+export function getStoryChapters(locale: Locale): StoryChapter[] {
+  const copy = getContent(locale).beyond.chapters;
+
+  return storyBases.map((base) => ({
+    id: base.id,
+    index: base.index,
+    ...copy[base.id],
+  }));
+}
+
+/** Header anchors with localized labels. */
+export function getNavItems(locale: Locale): { href: string; label: string }[] {
+  const labels = getContent(locale).nav.labels;
+
+  return navItems.map((item) => ({ href: item.href, label: labels[item.id] }));
+}

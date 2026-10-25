@@ -1,7 +1,8 @@
 "use client";
 
 import { useGsapScope, prefersReducedMotion } from "@/lib/gsap";
-import { manifesto } from "@/content/site";
+import { getContent } from "@/content/site";
+import type { Locale } from "@/lib/i18n";
 
 /**
  * The scroll peak.
@@ -12,7 +13,8 @@ import { manifesto } from "@/content/site";
  * section still renders as a normal static block. The scrub timeline is then
  * driven by the wrapper's own travel, which is exactly what sticky pins.
  */
-export default function Manifesto() {
+export default function Manifesto({ locale }: { locale: Locale }) {
+  const t = getContent(locale);
   const scopeRef = useGsapScope<HTMLElement>(({ gsap, scope }) => {
     if (prefersReducedMotion()) return;
 
@@ -143,7 +145,7 @@ export default function Manifesto() {
 
         <div className="shell relative w-full">
           <h2 id="manifesto-heading" className="sr-only">
-            {manifesto.join(" ")}
+            {t.manifesto.words.join(" ")}
           </h2>
 
           <div aria-hidden="true" className="select-none">
@@ -151,14 +153,14 @@ export default function Manifesto() {
               data-word="innovate"
               className="block font-display text-[clamp(3rem,14.5vw,11.5rem)] font-extrabold leading-[0.82] tracking-[-0.04em] text-fg"
             >
-              {manifesto[0]}
+              {t.manifesto.words[0]}
             </span>
 
             <span
               data-word="with"
               className="my-1 block pl-[8%] font-editorial text-[clamp(1.6rem,4.2vw,3.4rem)] italic leading-none text-accent md:pl-[16%]"
             >
-              {manifesto[1]}
+              {t.manifesto.words[1]}
             </span>
 
             <span
@@ -166,7 +168,7 @@ export default function Manifesto() {
               className="block font-display text-[clamp(3rem,14.5vw,11.5rem)] font-extrabold leading-[0.82] tracking-[-0.04em] text-transparent"
               style={{ WebkitTextStroke: "1.5px var(--stroke, #f3f4f6)" }}
             >
-              {manifesto[2]}
+              {t.manifesto.words[2]}
             </span>
 
             <div data-rule className="mt-10 h-px w-full origin-left bg-line-2" />
@@ -175,8 +177,7 @@ export default function Manifesto() {
               data-kicker
               className="mt-6 max-w-md font-mono text-[10px] uppercase leading-relaxed tracking-[0.28em] text-fg-faint"
             >
-              Purpose is not a slogan. It is the reason a feature exists, the
-              reason a user stays, and the reason the code is worth maintaining.
+              {t.manifesto.kicker}
             </p>
           </div>
         </div>

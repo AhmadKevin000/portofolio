@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ahmad Kevin — Portfolio
+
+Personal portfolio for Ahmad Kevin (Kepin), built with Next.js (App Router), React,
+TypeScript, Tailwind CSS, and GSAP.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Routes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The site is bilingual and the language is part of the URL:
 
-## Learn More
+| Path  | Result                                 |
+| ----- | -------------------------------------- |
+| `/`   | 307 redirect to `/en`                  |
+| `/en` | English                                |
+| `/id` | Indonesian                             |
+| `/fr` | 404 — only `en` and `id` are locales   |
 
-To learn more about Next.js, take a look at the following resources:
+Both locales render the same component tree. The copy lives in `content/en.ts` and
+`content/id.ts`; structure (ids, order, asset paths, technology names, statuses,
+links) lives once in `content/site.ts`, which merges the two through
+`getContent(locale)`. Locale primitives — the locale list, `<html lang>` tags,
+Open Graph locales, and the site origin — are in `lib/i18n.ts`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Adding a locale means adding it to `locales` in `lib/i18n.ts` and adding a
+dictionary that satisfies `Dictionary` in `content/site.ts`. The type checker
+fails on any missing string, so a half-translated locale cannot ship silently.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Environment
 
-## Deploy on Vercel
+| Variable              | Required | Purpose                                                                 |
+| --------------------- | -------- | ----------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL` | No       | Absolute origin used for canonical URLs, `hreflang`, Open Graph and the sitemap. No trailing slash. Falls back to `http://localhost:3000`. |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Set it to the real origin before deploying, otherwise every canonical and
+`hreflang` URL will point at localhost. `.env.example` has the template.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Content
+
+`content/` is the single source of truth for copy. Nothing there is invented:
+unconfirmed facts are absent rather than filled in, and each technology carries a
+status (`used`, `in-progress`, `experiment`, `planned`) instead of a proficiency
+score. Screenshots are only rendered when the file exists in `public/images/`.
+
+## Checks
+
+```bash
+npx tsc --noEmit     # types
+npx next build       # production build
+```
+
+There is no ESLint configuration in this repository, so `next lint` is not
+available (and was removed in Next.js 16).

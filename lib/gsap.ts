@@ -6,6 +6,16 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 let registered = false;
 
+/**
+ * Matches the `animation-delay` of `reveal-rescue` in globals.css. If GSAP is
+ * registered later than this, the CSS rescue has already made every section
+ * visible, and re-hiding them to animate would be the "visible, then hidden,
+ * then animated" flash the reveal exists to prevent.
+ */
+export const REVEAL_RESCUE_MS = 2000;
+
+let registeredAt: number | null = null;
+
 /** Register plugins once, on the client only. */
 export function ensureGsap() {
   if (registered) return gsap;
@@ -19,8 +29,8 @@ export function ensureGsap() {
 
   gsap.defaults({ ease: "power3.out" });
 
-  // Tells the bootstrap in app/layout.tsx that GSAP is alive, so its watchdog
-  // leaves the pre-reveal hidden state armed.
+  // Tells the CSS rescue in globals.css that GSAP is alive, so it stops
+  // queueing the fallback and lets the reveal run normally.
   document.documentElement.setAttribute("data-motion-ready", "");
 
   // Webfonts change the height of every text block. Measuring before they
@@ -43,8 +53,20 @@ export function ensureGsap() {
     });
   }
 
+  registeredAt = performance.now();
   registered = true;
   return gsap;
+}
+
+/**
+ * True when GSAP turned up after the rescue window had already elapsed.
+ *
+ * Setting `data-motion-ready` cancels the CSS rescue, which would put the
+ * pre-reveal hidden state back on everything the rescue had uncovered. Callers
+ * check this and show their content without animating instead.
+ */
+export function rescueAlreadyFired() {
+  return registeredAt !== null && registeredAt > REVEAL_RESCUE_MS;
 }
 
 /**

@@ -12,6 +12,11 @@ type CometCardProps = {
    */
   enabled?: boolean;
   className?: string;
+  /**
+   * Extra class on the glare layer. A Polaroid frame uses this to confine the
+   * highlight to the image window, so no light is ever thrown over the caption.
+   */
+  glareClassName?: string;
 };
 
 /**
@@ -38,6 +43,7 @@ export function CometCard({
   children,
   enabled = true,
   className = "",
+  glareClassName = "",
 }: CometCardProps) {
   const card = useRef<HTMLDivElement>(null);
   const glare = useRef<HTMLSpanElement>(null);
@@ -133,7 +139,11 @@ export function CometCard({
         style={{ transformStyle: "preserve-3d", willChange: "transform" }}
       >
         {children}
-        <span ref={glare} aria-hidden="true" className="comet-glare" />
+        <span
+          ref={glare}
+          aria-hidden="true"
+          className={`comet-glare ${glareClassName}`}
+        />
       </div>
     </div>
   );

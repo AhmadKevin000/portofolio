@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import gsap from "gsap";
-import { ensureGsap, prefersReducedMotion } from "@/lib/gsap";
+import { ensureGsap, prefersReducedMotion, rescueAlreadyFired } from "@/lib/gsap";
 
 export type RevealVariant = "up" | "mask" | "line" | "scale" | "fade";
 
@@ -18,10 +18,10 @@ type RevealProps = {
  * Scroll-triggered entrance.
  *
  * The initial hidden state lives in CSS (`html[data-reveal-armed] …`) and is
- * opt-in: it only applies once the bootstrap in `app/layout.tsx` has armed it,
- * and that bootstrap disarms itself if GSAP never reports in. The markup is
- * therefore never painted visible-then-hidden, but it is also never left
- * hidden by a bundle that failed to arrive.
+ * opt-in: it only applies to markup the server rendered with the armed flag,
+ * and a CSS rescue animation in globals.css clears it if GSAP never reports
+ * in. The markup is therefore never painted visible-then-hidden, but it is
+ * also never left hidden by a bundle that failed to arrive.
  *
  * `once: true` — an element that has entered does not replay when the user
  * scrolls back up. Replaying is the fastest way to make a long page feel
@@ -41,8 +41,7 @@ export function Reveal({
 
     const show = () => el.classList.add("is-in");
 
-    // Disarmed means the watchdog already gave up on JS, or the browser
-    // prefers reduced motion. Either way: show, don't animate.
+    // Not armed, or reduced motion: show, don't animate.
     if (
       prefersReducedMotion() ||
       !document.documentElement.hasAttribute("data-reveal-armed")
@@ -55,6 +54,13 @@ export function Reveal({
 
     try {
       ensureGsap();
+
+      // GSAP arrived after the CSS rescue already uncovered the page. Animating
+      // now would re-hide content that is on screen, so leave it as it is.
+      if (rescueAlreadyFired()) {
+        show();
+        return;
+      }
 
       ctx = gsap.context(() => {
         const from: gsap.TweenVars = { opacity: 0 };
