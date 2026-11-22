@@ -286,10 +286,10 @@ export const id: Dictionary = {
     headingLead: "Punya ide",
     headingTail: "yang ingin diwujudkan?",
     body: "Terbuka untuk magang, posisi junior, dan proyek tempat saya bisa belajar sesuatu yang nyata.",
-    github: "GitHub — AhmadKevin000",
+    github: "GitHub",
     instagram: "Instagram",
     linkedin: "LinkedIn",
-    downloadCv: "Unduh CV",
+    downloadCv: "CV",
     backToTop: "Kembali ke atas",
   },
 };

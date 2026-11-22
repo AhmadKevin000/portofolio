@@ -56,12 +56,13 @@ export const profile = {
 /**
  * Public URL of the owner's CV PDF.
  *
- * The file lives at `public/cv/ahmad-kevin-cv.pdf`. Drop it in and the CV link
+ * The file lives at `public/cv/ahmad-kevin-cv-en.pdf`, the English edition
+ * compiled from `documents/ahmad-kevin-cv-en.typ`. Drop it in and the CV link
  * in the contact section appears on the next build — the existence check is a
  * build-time `existsSync`, not a placeholder. Do not point this at a generated
  * or substituted document.
  */
-export const CV_PATH = "/cv/ahmad-kevin-cv.pdf";
+export const CV_PATH = "/cv/ahmad-kevin-cv-en.pdf";
 
 /* ------------------------------------------------------------------ */
 /* Projects                                                            */

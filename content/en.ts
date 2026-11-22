@@ -287,10 +287,10 @@ export const en: Dictionary = {
     headingLead: "Got something",
     headingTail: "worth building?",
     body: "Open to internships, junior roles, and projects where I can learn something real.",
-    github: "GitHub — AhmadKevin000",
+    github: "GitHub",
     instagram: "Instagram",
     linkedin: "LinkedIn",
-    downloadCv: "Download CV",
+    downloadCv: "CV",
     backToTop: "Back to top",
   },
 };

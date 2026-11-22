@@ -117,9 +117,8 @@ const MAGNET_STRENGTH = 6;
  *
  * One system: identical frame, padding, icon slot, label weight, and arrow —
  * the `BTN_*` constants above, which the CV document below also uses, so the
- * fourth action cannot drift from the other three. GitHub carries the handle
- * because that is the one place the account name is meaningful; it is the only
- * difference between the rows, and it is content rather than styling.
+ * fourth action cannot drift from the other three. Every row is labelled with
+ * the channel name alone; the account handle is not repeated in the label.
  *
  * Two independent responses, on two different elements:
  *
