@@ -5,6 +5,14 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
 
+  experimental: {
+    /**
+     * Opt this app into security-driven upgrade reminders, so `next build`
+     * surfaces an advisory instead of silently shipping an affected version.
+     */
+    agentUpgrade: "security",
+  },
+
   /**
    * The locale segment is part of the URL, so there is no page at `/`.
    *
